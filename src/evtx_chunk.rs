@@ -275,6 +275,7 @@ impl<'a> Iterator for IterChunkRecords<'a> {
             event_record_id: record_header.event_record_id,
             timestamp: record_header.timestamp,
             tokens,
+            chunk: self.chunk,
         }))
     }
 }

@@ -3,7 +3,7 @@ pub use byteorder::{LittleEndian, ReadBytesExt};
 use crate::{error::Error, guid::Guid, model::deserialized::*};
 use std::io::Cursor;
 
-use crate::binxml::deserializer::{BinXmlDeserializer};
+use crate::binxml::deserializer::BinXmlDeserializer;
 use crate::binxml::name::BinXmlName;
 use crate::binxml::value_variant::{BinXmlValue, BinXmlValueType};
 
@@ -27,7 +27,7 @@ pub fn read_template<'a, 'c>(
 
     // If name is cached, read it and seek ahead if needed.
     let template_def =
-        if let Some(definition) = chunk.and_then(|chunk| chunk.template_table.get_template(template_definition_data_offset)) {
+        if let Some(definition_data_size) = chunk.and_then(|chunk| chunk.template_table.get_template_data_offset(template_definition_data_offset)) {
             // Seek if needed
             trace!(
                 "{} Got cached template from offset {}",
@@ -37,10 +37,11 @@ pub fn read_template<'a, 'c>(
             // 33 is template definition data size, we've read 9 bytes so far.
             if template_definition_data_offset == cursor.position() as u32 {
                 cursor.seek(SeekFrom::Current(
-                    i64::from(definition.data_size) + (33 - 9),
+                    i64::from(definition_data_size) + (33 - 9),
                 ))?;
             }
-            Cow::Borrowed(definition)
+
+            BinXmlTemplateDefinition::Offset(template_definition_data_offset)
         } else if template_definition_data_offset != cursor.position() as u32 {
             trace!(
                 "Need to seek to offset {} to read template",
@@ -54,9 +55,21 @@ pub fn read_template<'a, 'c>(
 
             cursor.seek(SeekFrom::Start(position_before_seek))?;
 
-            Cow::Owned(template_def)
+            if let Some(chunk) = chunk {
+                chunk.template_table.put_template(template_definition_data_offset, template_def);
+                BinXmlTemplateDefinition::Offset(template_definition_data_offset)
+            } else {
+                BinXmlTemplateDefinition::Data(template_def)
+            }
         } else {
-            Cow::Owned(read_template_definition(cursor, chunk)?)
+            let template_def = read_template_definition(cursor, chunk)?;
+
+            if let Some(chunk) = chunk {
+                chunk.template_table.put_template(template_definition_data_offset, template_def);
+                BinXmlTemplateDefinition::Offset(template_definition_data_offset)
+            } else {
+                BinXmlTemplateDefinition::Data(template_def)
+            }
         };
 
     let number_of_substitutions = try_read!(cursor, u32);
@@ -101,7 +114,7 @@ pub fn read_template<'a, 'c>(
         if position + u64::from(descriptor.size) != cursor.position() {
             return Err(Error::other(
                 &format!("Read incorrect amount of data, cursor position is at {}, but should have ended up at {}, last descriptor was {:?}.",
-                        cursor.position(), position + u64::from(descriptor.size), &descriptor),
+                         cursor.position(), position + u64::from(descriptor.size), &descriptor),
                 cursor.position(),
             ));
         }
@@ -117,7 +130,7 @@ pub fn read_template<'a, 'c>(
 pub fn read_template_definition<'a>(
     cursor: &mut Cursor<&'a [u8]>,
     chunk: Option<&'a EvtxChunk<'a>>,
-) -> Result<BinXMLTemplateDefinition<'a>, Error> {
+) -> Result<BinXMLTemplateDefinitionData<'a>, Error> {
     let next_template_offset = try_read!(cursor, u32);
 
     let template_guid = Guid::from_stream(cursor)
@@ -131,7 +144,7 @@ pub fn read_template_definition<'a>(
     let tokens =
         BinXmlDeserializer::read_binxml_fragment(cursor, chunk, Some(data_size))?;
 
-    Ok(BinXMLTemplateDefinition {
+    Ok(BinXMLTemplateDefinitionData {
         next_template_offset,
         template_guid,
         data_size,
@@ -232,7 +245,7 @@ mod test {
     #[test]
     fn test_read_template_definition() {
         ensure_env_logger_initialized();
-        let expected_at_550 = BinXMLTemplateDefinition {
+        let expected_at_550 = BinXMLTemplateDefinitionData {
             next_template_offset: 0,
             template_guid: Guid::new(
                 3_346_188_909,

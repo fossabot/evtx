@@ -319,7 +319,11 @@ mod tests {
     #[test]
     fn test_process_single_chunk() {
         let evtx_file = include_bytes!("../samples/security.evtx");
-        process_90_records(evtx_file);
+        let mut parser = EvtxParser::from_buffer(evtx_file.to_vec()).unwrap();
+
+        for (i, record) in parser.records().enumerate() {
+            record.unwrap();
+        }
     }
 
     #[test]

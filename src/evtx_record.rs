@@ -7,12 +7,14 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::prelude::*;
 use failure::Error;
 use std::io::{self, Cursor, Read};
+use crate::EvtxChunk;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct EvtxRecord<'a> {
     pub event_record_id: u64,
     pub timestamp: DateTime<Utc>,
     pub tokens: Vec<BinXMLDeserializedTokens<'a>>,
+    pub chunk: &'a EvtxChunk<'a>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,7 +63,7 @@ impl<'a> EvtxRecord<'a> {
     pub fn into_serialized<T: BinXmlOutput<Vec<u8>>>(self) -> Result<SerializedEvtxRecord, Error> {
         let mut output_builder = T::with_writer(Vec::new());
 
-        parse_tokens(self.tokens, &mut output_builder)?;
+        parse_tokens(self.tokens,  self.chunk, &mut output_builder)?;
 
         let data = String::from_utf8(output_builder.into_writer()?)?;
 
