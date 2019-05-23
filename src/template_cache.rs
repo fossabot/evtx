@@ -37,7 +37,7 @@ impl<'chunk> TemplateCache<'chunk> {
         Ok(TemplateCache(cache))
     }
 
-    pub fn get_template(&'chunk self, offset: Offset) -> Option<&'chunk CachedTemplate<'chunk>> {
+    pub fn get_template<'s>(&'s self, offset: Offset) -> Option<&'s CachedTemplate<'s>> where 'chunk: 's {
         self.0.get(&offset)
     }
 

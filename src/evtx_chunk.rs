@@ -156,7 +156,7 @@ impl<'chunk> EvtxChunk<'chunk> {
 
     /// Return an iterator of records from the chunk.
     /// See `IterChunkRecords` for more lifetime info.
-    pub fn iter(&'chunk mut self) -> IterChunkRecords<'chunk> {
+    pub fn iter(&self) -> IterChunkRecords {
         IterChunkRecords {
             settings: self.settings,
             chunk: self,
@@ -167,8 +167,8 @@ impl<'chunk> EvtxChunk<'chunk> {
 
     /// Return an iterator of serialized records (containing textual data, not tokens) from the chunk.
     pub fn iter_serialized_records<O: BinXmlOutput<Vec<u8>>>(
-        &'chunk mut self,
-    ) -> impl Iterator<Item = Result<SerializedEvtxRecord>> + 'chunk {
+        &self,
+    ) -> impl Iterator<Item = Result<SerializedEvtxRecord>> + '_ {
         self.iter()
             .map(|record_res| record_res.and_then(evtx_record::EvtxRecord::into_serialized::<O>))
     }
