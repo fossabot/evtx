@@ -32,24 +32,9 @@ pub fn read_template<'a>(
     let template_definition_data_offset = try_read!(cursor, u32);
 
     // If name is cached, read it and seek ahead if needed.
-    let template_def = if let Some(definition) = chunk.and_then(|chunk| {
-        chunk
-            .template_table
-            .get_template(template_definition_data_offset)
-    }) {
+    let template_def = if false {
         // Seek if needed
-        trace!(
-            "{} Got cached template from offset {}",
-            cursor.position(),
-            template_definition_data_offset
-        );
-        // 33 is template definition data size, we've read 9 bytes so far.
-        if template_definition_data_offset == cursor.position() as u32 {
-            cursor.seek(SeekFrom::Current(
-                i64::from(definition.data_size) + (33 - 9),
-            ))?;
-        }
-        Cow::Borrowed(definition)
+        unreachable!()
     } else if template_definition_data_offset != cursor.position() as u32 {
         trace!(
             "Need to seek to offset {} to read template",

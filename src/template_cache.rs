@@ -8,8 +8,9 @@ pub use byteorder::{LittleEndian, ReadBytesExt};
 use encoding::EncodingRef;
 use std::collections::HashMap;
 use std::io::{Cursor, Seek, SeekFrom};
+use std::borrow::Cow;
 
-pub type CachedTemplate<'chunk> = BinXMLTemplateDefinition<'chunk>;
+pub type CachedTemplate<'chunk> = Cow<'chunk, String>;
 
 #[derive(Debug, Default)]
 pub struct TemplateCache<'chunk>(HashMap<Offset, CachedTemplate<'chunk>>);
@@ -31,7 +32,7 @@ impl<'chunk> TemplateCache<'chunk> {
             cursor.seek(SeekFrom::Start(u64::from(*offset)))?;
 
             let definition = read_template_definition(&mut cursor, None, ansi_codec)?;
-            cache.insert(*offset, definition);
+            // cache.insert(*offset, definition);
         }
 
         Ok(TemplateCache(cache))
