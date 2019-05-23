@@ -156,7 +156,7 @@ impl<'chunk> EvtxChunk<'chunk> {
 
     /// Return an iterator of records from the chunk.
     /// See `IterChunkRecords` for more lifetime info.
-    pub fn iter<'a: 'chunk>(&'a mut self) -> IterChunkRecords {
+    pub fn iter(&'chunk mut self) -> IterChunkRecords<'chunk> {
         IterChunkRecords {
             settings: self.settings,
             chunk: self,
@@ -166,9 +166,9 @@ impl<'chunk> EvtxChunk<'chunk> {
     }
 
     /// Return an iterator of serialized records (containing textual data, not tokens) from the chunk.
-    pub fn iter_serialized_records<'a: 'chunk, O: BinXmlOutput<Vec<u8>>>(
-        &'a mut self,
-    ) -> impl Iterator<Item = Result<SerializedEvtxRecord>> + 'a {
+    pub fn iter_serialized_records<O: BinXmlOutput<Vec<u8>>>(
+        &'chunk mut self,
+    ) -> impl Iterator<Item = Result<SerializedEvtxRecord>> + 'chunk {
         self.iter()
             .map(|record_res| record_res.and_then(evtx_record::EvtxRecord::into_serialized::<O>))
     }
@@ -188,17 +188,11 @@ impl<'chunk> EvtxChunk<'chunk> {
 ///
 /// | EvtxChunk<'chunk>: ---------------------------- | Borrows `EvtxChunkData`.
 ///     &'chunk EvtxChunkData, TemplateCache<'chunk>
-///
-/// | IterChunkRecords<'a: 'chunk>:  ----- | Borrows `EvtxChunk` for 'a, but will only yield `EvtxRecord<'a>`.
-///     &'a EvtxChunkData<'chunk>
-///
-/// The reason we only keep a single 'a lifetime (and not 'chunk as well) is because we don't
-/// care about the larger lifetime, and so it allows us to simplify the definition of the struct.
-pub struct IterChunkRecords<'a> {
-    chunk: &'a EvtxChunk<'a>,
+pub struct IterChunkRecords<'chunk> {
+    chunk: &'chunk EvtxChunk<'chunk>,
     offset_from_chunk_start: u64,
     exhausted: bool,
-    settings: &'a ParserSettings,
+    settings: &'chunk ParserSettings,
 }
 
 impl<'a> Iterator for IterChunkRecords<'a> {
